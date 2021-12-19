@@ -59,7 +59,7 @@ public class IndustrialBlastFurnaceBlockEntity extends GenericMachineBlockEntity
 		final int[] inputs = new int[]{0, 1};
 		final int[] outputs = new int[]{2, 3};
 		this.inventory = new RebornInventory<>(5, "IndustrialBlastFurnaceBlockEntity", 64, this);
-		this.crafter = new BlastFurnaceRecipeCrafter( this, 2, 2, this.inventory, inputs, outputs);
+		this.crafter = new RecipeCrafter(ModRecipes.BLAST_FURNACE, this, 2, 2, this.inventory, inputs, outputs);
 	}
 
 	@Override
