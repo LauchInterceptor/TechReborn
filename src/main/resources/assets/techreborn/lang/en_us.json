@@ -736,6 +736,7 @@
   "techreborn.message.coordsHaveBeen": "Coordinates have been",
   "techreborn.message.cleared": "Cleared",
   "techreborn.message.detects": "Detects",
+  "techreborn.message.notEnoughEnergy": "Not enough energy to activate",
   "techreborn.message.alarm": "Switched to:",
   "techreborn.message.allPlayers": "All Players",
   "techreborn.message.onlyOtherPlayers": "Only Other Players",
