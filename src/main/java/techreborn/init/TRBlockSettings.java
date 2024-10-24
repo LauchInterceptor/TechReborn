@@ -238,6 +238,11 @@ public class TRBlockSettings {
 		return metal().strength(1f, 8f);
 	}
 
+	public static FabricBlockSettings miningPipe() {
+		//TODO: Fine tune this
+		return metal();
+	}
+
 	public static FabricBlockSettings resinBasin() {
 		return FabricBlockSettings.create()
 			.mapColor(MapColor.OAK_TAN)

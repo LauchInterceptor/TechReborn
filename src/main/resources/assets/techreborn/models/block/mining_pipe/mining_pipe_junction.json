@@ -1,0 +1,21 @@
+{
+	"textures": {
+		"particle": "#mining_pipe"
+	},
+	"elements": [
+		{
+			"__comment": "central part, no sides connected",
+			"from": [2, 2, 2],
+			"to": [13, 13, 13],
+			"shade": true,
+			"faces": {
+				"north": {"uv": [0, 0, 6, 6], "texture": "#mining_pipe"},
+				"east": {"uv": [0, 0, 6, 6], "texture": "#mining_pipe"},
+				"south": {"uv": [0, 0, 6, 6], "texture": "#mining_pipe"},
+				"west": {"uv": [0, 0, 6, 6], "texture": "#mining_pipe"},
+				"up": {"uv": [0, 0, 6, 6], "texture": "#mining_pipe"},
+				"down": {"uv": [0, 0, 6, 6], "texture": "#mining_pipe"}
+			}
+		}
+	]
+}
