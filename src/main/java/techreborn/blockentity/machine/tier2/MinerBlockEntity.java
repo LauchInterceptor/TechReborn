@@ -40,9 +40,7 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 	static final int OUTPUT_SLOT = 3;
 	static final int ENERGY_SLOT = 4;
 
-	static final Set<Item> ALLOWED_MINING_TOOLS = Set.of(TRContent.BASIC_DRILL, TRContent.ADVANCED_DRILL, TRContent.INDUSTRIAL_DRILL);
-
-	//TODO: Add scanners when they are finished
+	//TODO: Add scanner when it is finished
 	static final Set<Item> ALLOWED_PROSPECTING_TOOLS = Set.of();
 
 	private int timeToMine;
@@ -71,7 +69,7 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 	}
 
 	public static boolean canUseAsMiningTool(ItemStack itemStack){
-		return ALLOWED_MINING_TOOLS.contains(itemStack.getItem());
+		return itemStack.isIn(TRContent.ItemTags.MINER_ACCEPTED_TOOLS);
 	}
 
 	public static boolean canUseAsProspectingTool(ItemStack itemStack){
