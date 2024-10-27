@@ -25,6 +25,7 @@
 package techreborn.init;
 
 import net.fabricmc.fabric.api.object.builder.v1.block.FabricBlockSettings;
+import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.MapColor;
 import net.minecraft.sound.BlockSoundGroup;
@@ -238,9 +239,12 @@ public class TRBlockSettings {
 		return metal().strength(1f, 8f);
 	}
 
-	public static FabricBlockSettings miningPipe() {
+	public static AbstractBlock.Settings miningPipe() {
 		//TODO: Fine tune this
-		return metal();
+		return AbstractBlock.Settings.create()
+			.sounds(BlockSoundGroup.METAL)
+			.mapColor(MapColor.IRON_GRAY)
+			.strength(2f, 2f);
 	}
 
 	public static FabricBlockSettings resinBasin() {

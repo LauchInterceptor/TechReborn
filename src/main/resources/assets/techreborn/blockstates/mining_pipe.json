@@ -1,0 +1,17 @@
+{
+	"variants": {
+		"facing=north,pipe_type=pipe": {"model": "techreborn:block/mining_pipe/pipe","x": 90 },
+		"facing=south,pipe_type=pipe": {"model": "techreborn:block/mining_pipe/pipe","x": 270 },
+		"facing=west,pipe_type=pipe": {"model": "techreborn:block/mining_pipe/pipe","x": 90, "y": 270 },
+		"facing=east,pipe_type=pipe": {"model": "techreborn:block/mining_pipe/pipe","x": 90, "y": 90 },
+		"facing=down,pipe_type=pipe": {"model": "techreborn:block/mining_pipe/pipe","x": 180 },
+		"facing=up,pipe_type=pipe": {"model": "techreborn:block/mining_pipe/pipe"},
+		"facing=north,pipe_type=drill": {"model": "techreborn:block/mining_pipe/drill","x": 90 },
+		"facing=south,pipe_type=drill": {"model": "techreborn:block/mining_pipe/drill","x": 270 },
+		"facing=west,pipe_type=drill": {"model": "techreborn:block/mining_pipe/drill","x": 90, "y": 270 },
+		"facing=east,pipe_type=drill": {"model": "techreborn:block/mining_pipe/drill","x": 90, "y": 90 },
+		"facing=down,pipe_type=drill": {"model": "techreborn:block/mining_pipe/drill","x": 180 },
+		"facing=up,pipe_type=drill": {"model": "techreborn:block/mining_pipe/drill"},
+		"pipe_type=junction": {"model": "techreborn:block/mining_pipe/junction"}
+	}
+}
