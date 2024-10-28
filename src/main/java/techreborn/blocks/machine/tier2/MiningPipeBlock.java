@@ -35,6 +35,18 @@ public class MiningPipeBlock extends Block implements Waterloggable {
 		setDefaultState(getStateManager().getDefaultState().with(TYPE, MiningPipeType.DRILL).with(FACING, Direction.DOWN));
 	}
 
+	public static BlockState pipeTo(Direction direction){
+		return TRContent.MINING_PIPE.getDefaultState().with(TYPE, MiningPipeType.PIPE).with(FACING, direction);
+	}
+
+	public static BlockState drillTo(Direction direction){
+		return TRContent.MINING_PIPE.getDefaultState().with(TYPE, MiningPipeType.DRILL).with(FACING, direction);
+	}
+
+	public static BlockState junctionTo(Direction direction){
+		return TRContent.MINING_PIPE.getDefaultState().with(TYPE, MiningPipeType.JUNCTION).with(FACING, direction);
+	}
+
 	@Override
 	protected VoxelShape getCullingShape(BlockState state, BlockView world, BlockPos pos) {
 		if (Objects.requireNonNull(state.get(TYPE)) == MiningPipeType.JUNCTION) {

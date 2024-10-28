@@ -1,6 +1,8 @@
 package techreborn.blockentity.machine.tier2.miner;
 
+import net.minecraft.block.Block;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
 
 public abstract class MinerProcessingState{
 	public final MinerProcessingStatus status;
@@ -46,11 +48,21 @@ public abstract class MinerProcessingState{
 	public static class Probing extends MinerProcessingState {
 		BlockPos headPosition;
 		boolean reachedHead;
+		boolean skipProspectionNextBlock;
 		int headMovementCooldown;
 		public Probing(BlockPos headPosition) {
 			super(MinerProcessingStatus.PROBING);
 			this.headPosition = headPosition;
 			this.reachedHead = false;
+			this.skipProspectionNextBlock = false;
+			this.headMovementCooldown = 0;
+		}
+
+		public Probing(BlockPos headPosition, boolean skipProspectionNextBlock) {
+			super(MinerProcessingStatus.PROBING);
+			this.headPosition = headPosition;
+			this.reachedHead = false;
+			this.skipProspectionNextBlock = skipProspectionNextBlock;
 			this.headMovementCooldown = 0;
 		}
 
@@ -60,6 +72,14 @@ public abstract class MinerProcessingState{
 
 		public boolean hasReachedProbe(){
 			return this.reachedHead;
+		}
+
+		public boolean doSkipProspectionNextBlock() {
+			return skipProspectionNextBlock;
+		}
+
+		public void setSkipProspectionNextBlock(boolean skipProspectionNextBlock) {
+			this.skipProspectionNextBlock = skipProspectionNextBlock;
 		}
 
 		public void setHeadPosition(BlockPos headPosition) {
@@ -137,11 +157,79 @@ public abstract class MinerProcessingState{
 			super(MinerProcessingStatus.PROSPECTING);
 			this.headPosition = headPosition;
 		}
+
+		public BlockPos getHeadPosition() {
+			return headPosition;
+		}
+
+		public void setHeadPosition(BlockPos headPosition) {
+			this.headPosition = headPosition;
+		}
 	}
 
 	public static class DrillingOre extends MinerProcessingState {
-		public DrillingOre() {
+		BlockPos headPosition;
+		BlockPos drillTarget;
+		BlockPos drilledBlock;
+
+		Direction drillDirection;
+		int remainingDrillingTime;
+		public DrillingOre(BlockPos headPosition, BlockPos drillTarget) {
 			super(MinerProcessingStatus.DRILLING_ORE);
+			this.headPosition = headPosition;
+			this.drillTarget = drillTarget;
+		}
+
+		public BlockPos getDrillTarget() {
+			return drillTarget;
+		}
+
+		public void setDrillTarget(BlockPos drillTarget) {
+			this.drillTarget = drillTarget;
+		}
+
+		public BlockPos getHeadPosition() {
+			return headPosition;
+		}
+
+		public void setHeadPosition(BlockPos headPosition) {
+			this.headPosition = headPosition;
+		}
+
+		public BlockPos getDrilledBlock() {
+			return drilledBlock;
+		}
+
+		public void setDrilledBlock(BlockPos drilledBlock) {
+			this.drilledBlock = drilledBlock;
+		}
+
+		public Direction getDrillDirection() {
+			return drillDirection;
+		}
+
+		public void setDrillDirection(Direction drillDirection) {
+			this.drillDirection = drillDirection;
+		}
+
+		public boolean isRemainingDrillingTimeSet(){
+			return this.remainingDrillingTime >= 0;
+		}
+
+		public boolean isDrillingTimeRemaining(){
+			return this.remainingDrillingTime > 0;
+		}
+
+		public void tickRemainingDrillingTime(){
+			this.remainingDrillingTime--;
+		}
+
+		public void setRemainingDrillingTime(int remainingDrillingTime) {
+			this.remainingDrillingTime = remainingDrillingTime;
+		}
+
+		public int getRemainingDrillingTime() {
+			return remainingDrillingTime;
 		}
 	}
 
