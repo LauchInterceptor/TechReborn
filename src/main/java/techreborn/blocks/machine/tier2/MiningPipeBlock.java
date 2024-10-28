@@ -71,7 +71,6 @@ public class MiningPipeBlock extends Block implements Waterloggable {
 				}
 			}
 			System.out.println("Changed facing to" + state.get(FACING));
-			return ActionResult.SUCCESS;
 		}else{
 			MiningPipeType type = state.get(TYPE);
 			switch (type){
@@ -86,8 +85,8 @@ public class MiningPipeBlock extends Block implements Waterloggable {
 				}
 			}
 			System.out.println("Changed type to" + state.get(TYPE));
-			return ActionResult.SUCCESS;
 		}
+		return ActionResult.SUCCESS;
 
 	}
 

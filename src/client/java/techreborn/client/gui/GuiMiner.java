@@ -64,6 +64,8 @@ public class GuiMiner extends GuiBase<BuiltScreenHandler> {
 		drawSlot(drawContext, 25 + 20 + 20 + 20, 25, layer); // Prospecting Tool Slot
 		drawSlot(drawContext, 25 + 20 + 20, 25 + 30, layer); // Output slot
 
+		drawText(drawContext, blockEntity.getState().getStatus().getDisplayText(), 45, 65 , 0x404040, layer);
+
 	}
 
 	@Override
