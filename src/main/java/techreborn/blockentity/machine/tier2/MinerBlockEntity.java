@@ -238,8 +238,14 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 			}
 		}
 
-		if (this.prospectedTargetBlock == null){
-			this
+	}
+
+	@Override
+	public void onBreak(World world, PlayerEntity playerEntity, BlockPos blockPos, BlockState blockState) {
+		BlockPos nextPosition = blockPos.down();
+		while (world.getBlockState(nextPosition).isOf(TRContent.MINING_PIPE)) {
+			world.breakBlock(nextPosition, true);
+			nextPosition = nextPosition.down();
 		}
 	}
 
