@@ -34,20 +34,22 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 	/**
 	 * Horizontal manhattan distance the ore prospection can cover per level.
 	 */
-	static final int DEFAULT_PROSPECTING_RANGE = 2;
-
-	// Vertical distance the mining pipe can be extended from the miner
-	static final int DEFAULT_DEPTH = 0;
+	static final int DEFAULT_PROSPECTING_RANGE = 5;
 
 	// Blocks per tick that are examined when a vertical level is scanned for ore.
-	static final float PROSPECTING_SPEED = 1f;
+	static final int DEFAULT_PROSPECTING_SPEED = 5;
 
-	static final int MINING_TOOL_SLOT = 0;
-	static final int PROSPECTING_TOOL_SLOT = 1;
 
-	static final int MINING_PIPE_SLOT = 2;
-	static final int OUTPUT_SLOT = 3;
-	static final int ENERGY_SLOT = 4;
+	// Slots
+	public static final int MINING_TOOL_SLOT = 0;
+	public static final int PROSPECTING_TOOL_SLOT = MINING_TOOL_SLOT + 1;
+	public static final int MINING_PIPE_INVENTORY_START = PROSPECTING_TOOL_SLOT + 1;
+	public static final int MINING_PIPE_INVENTORY_SIZE = 3;
+	public static final int OUTPUT_INVENTORY_START = MINING_PIPE_INVENTORY_START + MINING_PIPE_INVENTORY_SIZE + 1 ;
+	public static final int OUTPUT_INVENTORY_SIZE = 12;
+	public static final int ENERGY_SLOT = OUTPUT_INVENTORY_START + OUTPUT_INVENTORY_SIZE + 1;
+
+	static final int INVENTORY_SIZE = ENERGY_SLOT + 1;
 
 	//TODO: Add scanner when it is finished
 	static final Set<Item> ALLOWED_PROSPECTING_TOOLS = Set.of();
@@ -62,7 +64,7 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 	public MinerBlockEntity(BlockPos pos, BlockState state) {
 		super(TRBlockEntities.MINER, pos, state, "Miner", 128, 10_000, TRContent.Machine.MINER.block, 0);
 		// Inventory
-		this.inventory = new RebornInventory<>(5, "MinerBlockEntity", 64, this);
+		this.inventory = new RebornInventory<>(INVENTORY_SIZE, "MinerBlockEntity", 64, this);
 		this.state = new MinerProcessingState.Ready();
 	}
 
@@ -81,13 +83,26 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 
 	@Override
 	public BuiltScreenHandler createScreenHandler(int syncID, PlayerEntity player) {
-		return new ScreenHandlerBuilder("miner")
-			.player(player.getInventory()).inventory().hotbar().addInventory().blockEntity(this)
-			.filterSlot(MINING_TOOL_SLOT, 25 + 20, 25, MinerBlockEntity::canUseAsMiningTool)
-			.filterSlot(MINING_PIPE_SLOT, 25 + 20 + 20, 25, itemStack -> itemStack.isOf(TRContent.MINING_PIPE.asItem()))
-			.filterSlot(PROSPECTING_TOOL_SLOT, 25 + 20 + 20 + 20, 25, MinerBlockEntity::canUseAsProspectingTool)
-			.outputSlot(OUTPUT_SLOT, 25 + 20 + 20, 25 + 30)
-			.energySlot(ENERGY_SLOT, 8, 72)
+		var builder = new ScreenHandlerBuilder("miner")
+			.player(player.getInventory()).inventory().hotbar().addInventory().blockEntity(this);
+
+		int offsetX = 36;
+		int offsetY = 21;
+
+		builder.filterSlot(MINING_TOOL_SLOT, offsetX, offsetY, MinerBlockEntity::canUseAsMiningTool);
+		builder.filterSlot(PROSPECTING_TOOL_SLOT, offsetX, offsetY + 36, MinerBlockEntity::canUseAsProspectingTool);
+
+		for (int i = 0; i< MINING_PIPE_INVENTORY_SIZE; i++){
+			builder.filterSlot(MINING_PIPE_INVENTORY_START + i, offsetX + 21, offsetY + i * 18, itemStack -> itemStack.isOf(TRContent.MINING_PIPE.asItem()));
+		}
+
+		for (int row=0; row < 3; row++){
+			for (int column=0; column < 4; column++) {
+				builder.outputSlot(OUTPUT_INVENTORY_START + row * 4 + column, offsetX + 50 + 18 * column, offsetY + 18 * row);
+			}
+		}
+
+		return builder.energySlot(ENERGY_SLOT, 8, 72)
 			.syncEnergyValue()
 			.addInventory()
 			.create(this, syncID);
@@ -166,12 +181,12 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 					MinerProcessingState.Probing probingState = (MinerProcessingState.Probing) this.state;
 
 					if (!probingState.hasReachedProbe()) {
-						probingState.setHeadPosition(findProbe(world, probingState.getHeadPosition()));
+						probingState.setHeadPosition(findDrillHead(world, probingState.getHeadPosition()));
 						probingState.setProbeReached();
 						probingState.setHeadMovementCooldown((int) (55 * (1.0 - getSpeedMultiplier())) + 5);
 					}
 
-					if (this.hasProspectingTool() || !probingState.doSkipProspectionNextBlock()) {
+					if (this.hasProspectingTool() && !probingState.doSkipProspectionNextBlock()) {
 						this.state = new MinerProcessingState.Prospecting(probingState.getHeadPosition());
 						break;
 					}

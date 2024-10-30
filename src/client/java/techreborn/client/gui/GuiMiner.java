@@ -33,6 +33,7 @@ import reborncore.client.gui.widget.GuiButtonUpDown;
 import reborncore.common.screen.BuiltScreenHandler;
 import techreborn.blockentity.machine.tier2.MinerBlockEntity;
 import techreborn.blockentity.machine.tier2.PumpBlockEntity;
+import techreborn.init.TRContent;
 import techreborn.packets.serverbound.PumpDepthPayload;
 import techreborn.packets.serverbound.PumpRangePayload;
 
@@ -57,14 +58,24 @@ public class GuiMiner extends GuiBase<BuiltScreenHandler> {
 
 		if (hideGuiElements()) return;
 
-		drawSlot(drawContext, 8, 72, layer); // Battery slots
-		drawText(drawContext, Text.literal("Tool"), 25 + 20 , 14, 0x404040, layer);
-		drawSlot(drawContext, 25 + 20 , 25, layer); // Mining Tool Slot
-		drawSlot(drawContext, 25 + 20 + 20, 25, layer); // Mining Pipe Slot
-		drawSlot(drawContext, 25 + 20 + 20 + 20, 25, layer); // Prospecting Tool Slot
-		drawSlot(drawContext, 25 + 20 + 20, 25 + 30, layer); // Output slot
+		int offsetX = 36;
+		int offsetY = 21;
 
-		drawText(drawContext, blockEntity.getState().getStatus().getDisplayText(), 45, 65 , 0x404040, layer);
+
+		drawSlot(drawContext, 8, 72, layer); // Battery slots
+		drawSlot(drawContext, offsetX, offsetY, layer); // Mining Tool Slot
+		drawSlot(drawContext, offsetX, offsetY + 36, layer); // Prospecting Tool Slot
+		for (int i = 0; i< MinerBlockEntity.MINING_PIPE_INVENTORY_SIZE; i++){
+			drawSlot(drawContext, offsetX + 21, offsetY + i * 18, layer);
+		}
+
+		for (int row=0; row < 3; row++){
+			for (int column=0; column < 4; column++) {
+				drawSlot(drawContext,offsetX + 50 + 18 * column, offsetY + 18 * row, layer);
+			}
+		}
+
+		drawText(drawContext, blockEntity.getState().getStatus().getDisplayText(), offsetX, offsetY + 18 * 3 + 3, 0x404040, layer);
 
 	}
 
