@@ -8,7 +8,6 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3i;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -110,7 +109,7 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 		//TODO Sync Nbt
 	}
 
-	private BlockPos findProbe(World world, final BlockPos startPosition) {
+	private BlockPos findDrillHead(World world, final BlockPos startPosition) {
 		BlockPos lastMiningPipePosition;
 		BlockPos nextProbePosition = lastMiningPipePosition = startPosition;
 
@@ -120,27 +119,6 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 			nextProbePosition = nextProbePosition.down();
 		}
 		return lastMiningPipePosition;
-	}
-
-	private BlockPos findDrillHead(World world, final BlockPos startPosition) {
-		BlockPos drillPosition;
-		BlockPos nextProbePosition = drillPosition = startPosition;
-		BlockState probedBlockState;
-
-		probeLoop:
-		while ((probedBlockState = world.getBlockState(nextProbePosition)).isOf(TRContent.MINING_PIPE)) {
-			drillPosition = nextProbePosition;
-			switch (probedBlockState.get(MiningPipeBlock.TYPE)) {
-				case PIPE, JUNCTION -> {
-					Direction pipeDirection = probedBlockState.get(MiningPipeBlock.FACING);
-					nextProbePosition = nextProbePosition.offset(pipeDirection);
-				}
-				case DRILL -> {
-					break probeLoop;
-				}
-			}
-		}
-		return drillPosition;
 	}
 
 	@Override
@@ -201,6 +179,10 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 					}
 
 					if (probingState.getHeadMovementCooldown() == 0) {
+						if (!consumeMiningPipe()){
+							this.state = new MinerProcessingState.NoPipe();
+							break;
+						}
  						moveDrillHead(world, Direction.DOWN, probingState.getHeadPosition());
 						probingState.setHeadPosition(probingState.getHeadPosition().down());
 						probingState.setSkipProspectionNextBlock(false);
@@ -214,7 +196,6 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 
 					BlockState drilledBlock = world.getBlockState(drillingState.getDrilledBlockPosition());
 
-					// If no drilling time was set
 					if (!drillingState.isRemainingDrillingTimeSet()) {
 						float hardness = drilledBlock.getHardness(world, drillingState.getDrilledBlockPosition());
 						if (hardness < 0) {
@@ -226,7 +207,6 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 						log.info("Block: {} ticksToBreak: {}", drilledBlock, drillingState.getRemainingDrillingTime());
 					}
 
-					// If we still have to drill
 					if (drillingState.isDrillingTimeRemaining()) {
 						drillingState.tickRemainingDrillingTime();
 					} else {
@@ -238,68 +218,60 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 				case PROSPECTING -> {
 					MinerProcessingState.Prospecting prospectingState = (MinerProcessingState.Prospecting) this.state;
 
-
-					BlockPos prospectedBlockPosition;
-
 					if (this.blockProspectionIterator == null){
-						this.blockProspectionIterator = new BlockProspectingIterable(prospectingState.getHeadPosition(), 4, false).iterator();
+						this.blockProspectionIterator = new BlockProspectingIterable(prospectingState.getHeadPosition(), DEFAULT_PROSPECTING_RANGE, false).iterator();
 					}
 
-					if (!this.blockProspectionIterator.hasNext()){
-						this.state = new MinerProcessingState.Probing(prospectingState.getHeadPosition(), true);
-					}
+					int checksPerTickRemaining = (int) (DEFAULT_PROSPECTING_SPEED * (1.0 + getSpeedMultiplier()));
 
-					prospectedBlockPosition = this.blockProspectionIterator.next();
+					while(checksPerTickRemaining > 0){
+						if (!this.blockProspectionIterator.hasNext()){
+							this.blockProspectionIterator = null;
+							this.state = new MinerProcessingState.DrillingOre(prospectingState.getHeadPosition(), prospectingState.getProspectedBlocks());
+							break;
+						}
 
-					BlockState prospectedBlockState = world.getBlockState(prospectedBlockPosition);
+						BlockPos prospectedBlockPosition = this.blockProspectionIterator.next();
 
-					if (checkDesirable(prospectedBlockState)){
-						this.blockProspectionIterator = null;
-						this.state = new MinerProcessingState.DrillingOre(prospectingState.getHeadPosition(), prospectedBlockPosition);
+						BlockState prospectedBlockState = world.getBlockState(prospectedBlockPosition);
+
+						if (checkDesirable(prospectedBlockState)){
+							prospectingState.addProspectedBlock(prospectedBlockPosition);
+						}
+						checksPerTickRemaining--;
 					}
 				}
 				case DRILLING_ORE -> {
 					MinerProcessingState.DrillingOre drillingOreState = (MinerProcessingState.DrillingOre) this.state;
 
-					if(drillingOreState.getDrilledBlock() == null){
-						Vec3i delta = drillingOreState.getHeadPosition().subtract(drillingOreState.getDrillTarget());
+					if(!drillingOreState.isRemainingDrillingTimeSet()){
+						BlockPos prospectedBlock = drillingOreState.getNextProspectedBlock();
 
-						Direction primaryDirection;
-						if(Math.abs(delta.getX()) <= Math.abs(delta.getZ())){
-							primaryDirection = Direction.from(
-								Direction.Axis.Z,
-								delta.getZ() > 0 ? Direction.AxisDirection.POSITIVE: Direction.AxisDirection.NEGATIVE);
-						} else {
-							primaryDirection = Direction.from(
-								Direction.Axis.X,
-								delta.getX() > 0 ? Direction.AxisDirection.POSITIVE: Direction.AxisDirection.NEGATIVE);
+						if (prospectedBlock == null){
+							this.state = new MinerProcessingState.Probing(pos.withY(drillingOreState.getHeadPosition().getY()), true);
+							break;
 						}
-						drillingOreState.setDrillDirection(primaryDirection);
-						drillingOreState.setDrilledBlock(drillingOreState.getHeadPosition().offset(primaryDirection));
-					}
 
-					BlockState drilledBlock =  world.getBlockState(drillingOreState.getDrilledBlock());
+						BlockState prospectedBlockState = world.getBlockState(prospectedBlock);
 
-					// If no drilling time was set
-					if (!drillingOreState.isRemainingDrillingTimeSet()) {
-						float hardness = drilledBlock.getHardness(world, drillingOreState.getDrilledBlock());
+						float hardness = prospectedBlockState.getHardness(world, prospectedBlock);
 						if (hardness < 0) {
 							this.state = new MinerProcessingState.Retracting(drillingOreState.getHeadPosition());
 							break;
 						}
 
-						drillingOreState.setRemainingDrillingTime((int) ((30 * hardness) / getToolSpeedMultiplier(drilledBlock)));
-						log.info("Block: {} ticksToBreak: {}", drilledBlock, drillingOreState.getRemainingDrillingTime());
+						drillingOreState.setRemainingDrillingTime((int) ((30 * hardness) / getToolSpeedMultiplier(prospectedBlockState)));
 					}
 
 					// If we still have to drill
 					if (drillingOreState.isDrillingTimeRemaining()) {
 						drillingOreState.tickRemainingDrillingTime();
 					} else {
-						//TODO Add logic for getting the resources into the inventory
-						world.breakBlock(drillingOreState.getDrillTarget(), false);
-						moveDrillHead(world, drillingOreState.getDrillDirection(), drillingOreState.getHeadPosition());
-						drillingOreState.setDrilledBlock(null);
+						BlockPos prospectedBlock = drillingOreState.getNextProspectedBlock();
+
+						world.breakBlock(prospectedBlock, false);
+						drillingOreState.completeNextProspectedBlock();
+						drillingOreState.setRemainingDrillingTime(-1);
 					}
 
 				}
@@ -328,10 +300,6 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 			world.breakBlock(nextPosition, true);
 			nextPosition = nextPosition.down();
 		}
-	}
-
-	public Iterator<BlockPos> setupProspectionIterator(final BlockPos probePosition, final int probeRange) {
-		return new BlockProspectingIterable(probePosition, probeRange, true).iterator();
 	}
 
 	public boolean moveDrillHead(World world, final Direction direction, final BlockPos oldPosition){
@@ -374,17 +342,11 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 
 
 	public boolean checkDesirable(BlockState state){
-		// TODO Add halloween easter egg
 		return state.isIn(ConventionalBlockTags.ORES);
-	}
-
-	public boolean miningNecessitiesFulfilled() {
-		return hasMiningTool() && hasMiningPipe();
 	}
 
 	public boolean hasMiningTool() {
 		ItemStack miningTool = this.inventory.getStack(MINING_TOOL_SLOT);
-		// TODO See if I need to double check the mining tool being an actual mining tool or if the filtered slot suffices.
 		return MinerBlockEntity.canUseAsMiningTool(miningTool);
 	}
 
@@ -497,5 +459,4 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 			};
 		}
 	}
-
 }

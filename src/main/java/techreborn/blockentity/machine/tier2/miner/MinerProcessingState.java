@@ -1,8 +1,10 @@
 package techreborn.blockentity.machine.tier2.miner;
 
-import net.minecraft.block.Block;
+
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class MinerProcessingState{
 	public final MinerProcessingStatus status;
@@ -153,9 +155,19 @@ public abstract class MinerProcessingState{
 
 	public static class Prospecting extends MinerProcessingState {
 		BlockPos headPosition;
+		List<BlockPos> prospectedBlocks;
 		public Prospecting(BlockPos headPosition) {
 			super(MinerProcessingStatus.PROSPECTING);
 			this.headPosition = headPosition;
+			this.prospectedBlocks = new ArrayList<>();
+		}
+
+		public void addProspectedBlock(BlockPos prospectedBlock){
+			this.prospectedBlocks.add(prospectedBlock);
+		}
+
+		public List<BlockPos> getProspectedBlocks(){
+			return prospectedBlocks;
 		}
 
 		public BlockPos getHeadPosition() {
@@ -169,23 +181,25 @@ public abstract class MinerProcessingState{
 
 	public static class DrillingOre extends MinerProcessingState {
 		BlockPos headPosition;
-		BlockPos drillTarget;
-		BlockPos drilledBlock;
-
-		Direction drillDirection;
+		List<BlockPos> prospectedBlocks;
 		int remainingDrillingTime;
-		public DrillingOre(BlockPos headPosition, BlockPos drillTarget) {
+
+		public DrillingOre(BlockPos headPosition, List<BlockPos> prospectedBlocks) {
 			super(MinerProcessingStatus.DRILLING_ORE);
 			this.headPosition = headPosition;
-			this.drillTarget = drillTarget;
+			this.prospectedBlocks = prospectedBlocks;
+			this.remainingDrillingTime = -1;
 		}
 
-		public BlockPos getDrillTarget() {
-			return drillTarget;
+		public BlockPos getNextProspectedBlock(){
+			if (this.prospectedBlocks.isEmpty()){
+				return null;
+			}
+			return this.prospectedBlocks.getFirst();
 		}
 
-		public void setDrillTarget(BlockPos drillTarget) {
-			this.drillTarget = drillTarget;
+		public void completeNextProspectedBlock(){
+			this.prospectedBlocks.removeFirst();
 		}
 
 		public BlockPos getHeadPosition() {
@@ -194,22 +208,6 @@ public abstract class MinerProcessingState{
 
 		public void setHeadPosition(BlockPos headPosition) {
 			this.headPosition = headPosition;
-		}
-
-		public BlockPos getDrilledBlock() {
-			return drilledBlock;
-		}
-
-		public void setDrilledBlock(BlockPos drilledBlock) {
-			this.drilledBlock = drilledBlock;
-		}
-
-		public Direction getDrillDirection() {
-			return drillDirection;
-		}
-
-		public void setDrillDirection(Direction drillDirection) {
-			this.drillDirection = drillDirection;
 		}
 
 		public boolean isRemainingDrillingTimeSet(){
