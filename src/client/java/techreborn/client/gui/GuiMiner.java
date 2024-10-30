@@ -24,18 +24,11 @@
 
 package techreborn.client.gui;
 
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.text.Text;
 import reborncore.client.gui.GuiBase;
-import reborncore.client.gui.widget.GuiButtonUpDown;
 import reborncore.common.screen.BuiltScreenHandler;
 import techreborn.blockentity.machine.tier2.MinerBlockEntity;
-import techreborn.blockentity.machine.tier2.PumpBlockEntity;
-import techreborn.init.TRContent;
-import techreborn.packets.serverbound.PumpDepthPayload;
-import techreborn.packets.serverbound.PumpRangePayload;
 
 public class GuiMiner extends GuiBase<BuiltScreenHandler> {
 
