@@ -13,13 +13,13 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reborncore.common.blockentity.MachineBaseBlockEntity;
+import reborncore.common.blockentity.RedstoneConfiguration;
 import reborncore.common.powerSystem.RcEnergyItem;
 import reborncore.common.screen.BuiltScreenHandler;
 import reborncore.common.screen.BuiltScreenHandlerProvider;
 import reborncore.common.screen.builder.ScreenHandlerBuilder;
 import reborncore.common.util.RebornInventory;
 import techreborn.blockentity.machine.GenericMachineBlockEntity;
-import techreborn.blockentity.machine.tier0.block.BlockProcessable;
 import techreborn.blockentity.machine.tier2.miner.MinerProcessingState;
 import techreborn.blocks.machine.tier2.MiningPipeBlock;
 import techreborn.init.TRBlockEntities;
@@ -28,7 +28,7 @@ import techreborn.init.TRContent;
 import java.util.Iterator;
 import java.util.Set;
 
-public class MinerBlockEntity extends GenericMachineBlockEntity implements BuiltScreenHandlerProvider, BlockProcessable {
+public class MinerBlockEntity extends GenericMachineBlockEntity implements BuiltScreenHandlerProvider{
 
 	/**
 	 * Horizontal manhattan distance the ore prospection can cover per level.
@@ -128,6 +128,10 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 
 		charge(ENERGY_SLOT);
 
+		if (!this.isActive(RedstoneConfiguration.Element.RECIPE_PROCESSING)){
+			return;
+		}
+
 		boolean nextTick = false;
 
 		while (!nextTick) {
@@ -179,11 +183,13 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 					}
 
 					if (probingState.getHeadMovementCooldown() == 0) {
-						if (!consumeMiningPipe()){
+						if (!decrementMiningPipe()){
 							this.state = new MinerProcessingState.NoPipe();
 							break;
 						}
- 						moveDrillHead(world, Direction.DOWN, probingState.getHeadPosition());
+ 						if (!moveDrillHead(world, Direction.DOWN, probingState.getHeadPosition())){
+
+						}
 						probingState.setHeadPosition(probingState.getHeadPosition().down());
 						probingState.setSkipProspectionNextBlock(false);
 						probingState.setHeadMovementCooldown((int) (55 * (1.0 - getSpeedMultiplier())) + 5);
@@ -280,7 +286,9 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 					BlockPos nextPosition = retractionState.getHeadPosition();
 					if (world.getBlockState(nextPosition).isOf(TRContent.MINING_PIPE)) {
 						world.removeBlock(nextPosition, false);
-						//TODO Add mining pipe back to inventory
+						if (incrementMiningPipe()){
+							//TODO Eject the mining pipe if it is too much
+						}
 						retractionState.setHeadPosition(nextPosition.up());
 					} else {
 						this.state = new MinerProcessingState.Done();
@@ -308,9 +316,9 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 		BlockState oldPositionBlockState = world.getBlockState(oldPosition);
 		BlockState nextPositionOldState = world.getBlockState(nextPosition);
 
-		BlockState oldPositionNewState = null;
+		BlockState oldPositionNewState;
 
-		BlockState newPositionNewState = null;
+		BlockState newPositionNewState;
 
 		if (nextPositionOldState.isOf(TRContent.MINING_PIPE)) {
 			// If we're going against the direction of the pipe
@@ -360,10 +368,42 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 		return false;
 	}
 
-	public boolean consumeMiningPipe(){
+	int lastIncrementedMiningPipeStack = -1;
+
+	public boolean incrementMiningPipe(){
+		// Increment last incremented stack
+		if (lastIncrementedMiningPipeStack != -1){
+			ItemStack itemStack = this.inventory.getStack(lastIncrementedMiningPipeStack);
+			if (itemStack.getCount() < itemStack.getMaxCount()){
+				itemStack.increment(1);
+				return true;
+			}else{
+				lastIncrementedMiningPipeStack = -1;
+			}
+		}
+		int firstEmptyStack = -1;
+		// Find another stack
 		for (int slot = 0; slot < MINING_PIPE_INVENTORY_SIZE; slot++){
 			ItemStack itemStack = this.inventory.getStack(MINING_PIPE_INVENTORY_START + slot);
-			if (itemStack.isOf(TRContent.MINING_PIPE.asItem())){
+			if (!itemStack.isEmpty()){
+				if (itemStack.getCount() < itemStack.getMaxCount()){
+					itemStack.increment(1);
+					lastIncrementedMiningPipeStack = slot;
+					return true;
+				}
+			}else{
+				if (firstEmptyStack == -1){
+					firstEmptyStack = slot;
+				}
+			}
+		}
+		return false;
+	}
+
+	public boolean decrementMiningPipe(){
+		for (int slot = 0; slot < MINING_PIPE_INVENTORY_SIZE; slot++){
+			ItemStack itemStack = this.inventory.getStack(MINING_PIPE_INVENTORY_START + slot);
+			if (!itemStack.isEmpty()){
 				itemStack.decrement(1);
 				return true;
 			}
@@ -386,17 +426,6 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 			return fakeTool.getMiningSpeedMultiplier(blockState);
 		}
 		return this.inventory.getStack(MINING_TOOL_SLOT).getMiningSpeedMultiplier(blockState);
-	}
-
-	@Override
-	public boolean consumeEnergy(int amount) {
-		//TODO Figure out when this happens
-		return true;
-	}
-
-	@Override
-	public void playSound() {
-		// TODO play some sounds
 	}
 
 	static class BlockProspectingIterable implements Iterable<BlockPos> {
