@@ -3,11 +3,17 @@ package techreborn.blockentity.machine.tier2;
 import net.fabricmc.fabric.api.tag.convention.v2.ConventionalBlockTags;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
+import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.inventory.Inventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.loot.context.LootContextParameterSet;
+import net.minecraft.loot.context.LootContextParameters;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -25,8 +31,7 @@ import techreborn.blocks.machine.tier2.MiningPipeBlock;
 import techreborn.init.TRBlockEntities;
 import techreborn.init.TRContent;
 
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
 
 public class MinerBlockEntity extends GenericMachineBlockEntity implements BuiltScreenHandlerProvider{
 
@@ -177,7 +182,7 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 					BlockState probedBlock = world.getBlockState(probedBlockPosition);
 
 					// TODO Figure out a better criteria for water and other fluids
-					if (!probedBlock.isAir()) {
+					if (!probedBlock.isReplaceable()) {
 						this.state = new MinerProcessingState.Drilling(probingState.getHeadPosition(), probedBlockPosition);
 						break;
 					}
@@ -216,7 +221,9 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 					if (drillingState.isDrillingTimeRemaining()) {
 						drillingState.tickRemainingDrillingTime();
 					} else {
-						//TODO Add logic for getting the resources into the inventory
+						List<ItemStack> drops = getBlockDrops(world, drillingState.getDrilledBlockPosition());
+						// TODO Check if the drops fit in the output if not, halt the machine
+						addToOutputOrEject(world, drops);
 						world.breakBlock(drillingState.getDrilledBlockPosition(), false);
 						this.state = new MinerProcessingState.Probing(drillingState.getHeadPosition());
 					}
@@ -274,7 +281,9 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 						drillingOreState.tickRemainingDrillingTime();
 					} else {
 						BlockPos prospectedBlock = drillingOreState.getNextProspectedBlock();
-
+						List<ItemStack> drops = getBlockDrops(world, prospectedBlock);
+						// TODO Check if the drops fit in the output if not, halt the machine
+						addToOutputOrEject(world, drops);
 						world.breakBlock(prospectedBlock, false);
 						drillingOreState.completeNextProspectedBlock();
 						drillingOreState.setRemainingDrillingTime(-1);
@@ -295,6 +304,7 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 					}
 				}
 				case DONE -> {
+
 				}
 			}
 		}
@@ -325,7 +335,7 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 			oldPositionNewState = Blocks.AIR.getDefaultState();
 			newPositionNewState = TRContent.MINING_PIPE.getDefaultState().with(MiningPipeBlock.TYPE, MiningPipeBlock.MiningPipeType.DRILL);
 
-		} else if (nextPositionOldState.isOf(Blocks.AIR)) {
+		} else if (nextPositionOldState.isReplaceable()) {
 			newPositionNewState = TRContent.MINING_PIPE.getDefaultState().with(MiningPipeBlock.TYPE, MiningPipeBlock.MiningPipeType.DRILL);
 			oldPositionNewState = TRContent.MINING_PIPE.getDefaultState().with(MiningPipeBlock.TYPE, MiningPipeBlock.MiningPipeType.PIPE);
 		} else {
@@ -348,6 +358,59 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 	}
 
 
+	public List<ItemStack> getBlockDrops(World world, BlockPos pos){
+		BlockState blockState = world.getBlockState(pos);
+		if (world instanceof ServerWorld serverWorld){
+			LootContextParameterSet.Builder builder = new LootContextParameterSet.Builder(serverWorld)
+					.add(LootContextParameters.ORIGIN, Vec3d.ofCenter(pos))
+					.add(LootContextParameters.TOOL, this.inventory.getStack(MINING_TOOL_SLOT));
+			List<ItemStack> droppedStacks = blockState.getDroppedStacks(builder);
+			log.info("{} drops {}", blockState.getBlock(), droppedStacks);
+			return droppedStacks;
+		}
+		return Collections.singletonList(blockState.getBlock().asItem().getDefaultStack());
+	}
+
+	public boolean addToOutputOrEject(World world, List<ItemStack> addedItems){
+		List<ItemStack> remainder = addToOutputSlotsWithRemainder(addedItems);
+		Vec3d ejectPosition = this.pos.toCenterPos().add(0,0.5,0);
+		boolean ejectedItems = false;
+		for(ItemStack remainderStack : remainder){
+			if (!remainderStack.isEmpty()){
+				ejectedItems = true;
+				ItemEntity spawnedEntity = new ItemEntity(world, ejectPosition.x, ejectPosition.y, ejectPosition.z, remainderStack);
+				spawnedEntity.setVelocity(0,0.2,0);
+				world.spawnEntity(spawnedEntity);
+			}
+		}
+		return ejectedItems;
+	}
+
+	public List<ItemStack> addToOutputSlotsWithRemainder(List<ItemStack> addedItems){
+		Inventory inventory = this.getInventory();
+		for(ItemStack addedItemStack : addedItems){
+			for (int slot=0; slot < OUTPUT_INVENTORY_SIZE; slot++){
+				final ItemStack inventoryStack = inventory.getStack(OUTPUT_INVENTORY_START + slot);
+				if (inventoryStack.isOf(addedItemStack.getItem()) && inventoryStack.getCount() < inventoryStack.getMaxCount()){
+					int transferredAmount = Math.min(addedItemStack.getCount(), inventoryStack.getMaxCount() - inventoryStack.getCount());
+					addedItemStack.decrement(transferredAmount);
+					inventoryStack.increment(transferredAmount);
+				}
+				if (addedItemStack.isEmpty()){
+					break;
+				}
+			}
+
+			for (int slot=0; slot < OUTPUT_INVENTORY_SIZE; slot++){
+				final ItemStack inventoryStack = inventory.getStack(OUTPUT_INVENTORY_START + slot);
+				if (inventoryStack.isEmpty()){
+					inventory.setStack(OUTPUT_INVENTORY_START + slot, addedItemStack.copyAndEmpty());
+				}
+			}
+		}
+
+		return addedItems.stream().filter(itemStack -> !itemStack.isEmpty()).toList();
+	}
 
 	public boolean checkDesirable(BlockState state){
 		return state.isIn(ConventionalBlockTags.ORES);
