@@ -320,58 +320,43 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 	}
 
 	public boolean moveDrillHead(World world, final Direction direction, final BlockPos oldPosition){
+		BlockPos nextPosition = oldPosition.offset(direction);
 
 		BlockState oldPositionBlockState = world.getBlockState(oldPosition);
-		BlockPos nextPosition = oldPosition.offset(direction);
 		BlockState nextPositionOldState = world.getBlockState(nextPosition);
 
 		BlockState oldPositionNewState = null;
 
-		BlockState newPositionNewState;
+		BlockState newPositionNewState = null;
 
-		if (oldPositionBlockState.isOf(TRContent.Machine.MINER.block)) {
-			newPositionNewState = MiningPipeBlock.drillTo(direction);
-		} else if(!(nextPositionOldState.isOf(TRContent.MINING_PIPE) || nextPositionOldState.isOf(Blocks.AIR))){
-			return false;
-		}else if (oldPositionBlockState.get(MiningPipeBlock.FACING) == direction){
-			// If the direction of the old block's state points towards the new direction
-			oldPositionNewState = MiningPipeBlock.pipeTo(direction);
-			newPositionNewState = MiningPipeBlock.drillTo(direction);
-		}else if (oldPositionBlockState.get(MiningPipeBlock.FACING).getAxis() != direction.getAxis()){
-			/*
-			If the direction of the new position is not in the same direction the pipe goes thus far
-			we are extending off axis, to the side
-			 */
-			oldPositionNewState = MiningPipeBlock.junctionTo(direction);
-			newPositionNewState = MiningPipeBlock.drillTo(direction);
-		} else {
+		if (nextPositionOldState.isOf(TRContent.MINING_PIPE)) {
+			// If we're going against the direction of the pipe
 			oldPositionNewState = Blocks.AIR.getDefaultState();
-			newPositionNewState = MiningPipeBlock.drillTo(direction.getOpposite());
+			newPositionNewState = TRContent.MINING_PIPE.getDefaultState().with(MiningPipeBlock.TYPE, MiningPipeBlock.MiningPipeType.DRILL);
+
+		} else if (nextPositionOldState.isOf(Blocks.AIR)) {
+			newPositionNewState = TRContent.MINING_PIPE.getDefaultState().with(MiningPipeBlock.TYPE, MiningPipeBlock.MiningPipeType.DRILL);
+			oldPositionNewState = TRContent.MINING_PIPE.getDefaultState().with(MiningPipeBlock.TYPE, MiningPipeBlock.MiningPipeType.PIPE);
+		} else {
+			return false;
 		}
-		if (oldPositionNewState != null){
-			world.setBlockState(oldPosition, oldPositionNewState);
+
+		if(oldPositionBlockState.isOf(TRContent.Machine.MINER.block)){
+			oldPositionNewState = null;
 		}
-		if (newPositionNewState != null){
+
+		if(newPositionNewState != null){
 			world.setBlockState(nextPosition, newPositionNewState);
+		}
+
+		if(oldPositionNewState != null){
+			world.setBlockState(oldPosition, oldPositionNewState);
 		}
 
 		return true;
 	}
 
-	public boolean placeMiningPipe(World world, BlockPos pos, MiningPipeBlock.MiningPipeType type, Direction direction) {
-		ItemStack miningPipeStack = this.inventory.getStack(MINING_PIPE_SLOT);
-		if (!miningPipeStack.isEmpty()) {
-			world.setBlockState(pos, TRContent.MINING_PIPE.getDefaultState().with(MiningPipeBlock.TYPE, type).with(MiningPipeBlock.FACING, direction));
-			miningPipeStack.decrement(1);
-			return true;
-		}
-		return false;
-	}
 
-	public boolean replaceMiningPipe(World world, BlockPos pos, MiningPipeBlock.MiningPipeType type, Direction direction) {
-		world.setBlockState(pos, TRContent.MINING_PIPE.getDefaultState().with(MiningPipeBlock.TYPE, type).with(MiningPipeBlock.FACING, direction));
-		return false;
-	}
 
 	public boolean checkDesirable(BlockState state){
 		// TODO Add halloween easter egg
@@ -389,8 +374,24 @@ public class MinerBlockEntity extends GenericMachineBlockEntity implements Built
 	}
 
 	public boolean hasMiningPipe() {
-		ItemStack miningPipe = this.inventory.getStack(MINING_PIPE_SLOT);
-		return miningPipe.isOf(TRContent.MINING_PIPE.asItem());
+		for (int slot = 0; slot < MINING_PIPE_INVENTORY_SIZE; slot++){
+			ItemStack itemStack = this.inventory.getStack(MINING_PIPE_INVENTORY_START + slot);
+			if (itemStack.isOf(TRContent.MINING_PIPE.asItem())){
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public boolean consumeMiningPipe(){
+		for (int slot = 0; slot < MINING_PIPE_INVENTORY_SIZE; slot++){
+			ItemStack itemStack = this.inventory.getStack(MINING_PIPE_INVENTORY_START + slot);
+			if (itemStack.isOf(TRContent.MINING_PIPE.asItem())){
+				itemStack.decrement(1);
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public boolean hasProspectingTool() {
